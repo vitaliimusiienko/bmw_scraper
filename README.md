@@ -40,7 +40,7 @@ The data is saved into the `bmw_cars` table with the following schema:
 
 1. **Clone the repository:**
    ```bash
-   git clone <your-repository-url>
+   git clone https://github.com/vitaliimusiienko/bmw_scraper
    cd bmw_scraper
    ```
 
