@@ -29,7 +29,7 @@ class ValidationPipeline:
 # If any of these fields are missing or empty, the item is dropped and a warning is logged. 
 # Additionally, it attempts to clean and convert the mileage field to an integer, and normalizes the fuel field to lowercase. 
 # This ensures that only valid and well-formed data is passed on to the next stage of the pipeline, which in this case is saving to SQLite.
-    def process_item(self, item):
+    def process_item(self, item, spider):
         adapter = ItemAdapter(item)
         for field in self.REQUIRED_FIELDS:
             value = adapter.get(field)
@@ -74,14 +74,14 @@ class SQLitePipeline:
         db_path = crawler.settings.get("SQLITE_DB_PATH", "bmw_cars.db")
         return cls(db_path=db_path)
 
-    def open_spider(self):
+    def open_spider(self, spider):
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
         self._create_table()
         logger.info("SQLitePipeline: connected to DB '%s'", self.db_path)
 
 
-    def _create_table(self, item=None):
+    def _create_table(self):
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS bmw_cars (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,7 +101,7 @@ class SQLitePipeline:
         """)
         self.conn.commit()
 
-
+    def process_item(self, item, spider):
         adapter = ItemAdapter(item)
  
         try:
@@ -135,23 +135,21 @@ class SQLitePipeline:
  
             if self.cursor.rowcount == 0:
                 logger.debug(
-                    ""SQLitePipeline: duplicate missed -> %s %s [%s]"",
-                    adapter.get("registration"),
+                    "SQLitePipeline: duplicate missed -> %s %s [%s]",
+                    adapter.get("model"), adapter.get("name"), adapter.get("registration"),
                 )
             else:
                 logger.debug(
                     "SQLitePipeline: saved -> %s %s [%s]",
-                    adapter.get("model"),
-                    adapter.get("name"),
-                    adapter.get("registration"),
+                    adapter.get("model"), adapter.get("name"), adapter.get("registration"),
                 )
  
         except sqlite3.Error as exc:
             logger.error("SQLitePipeline: ошибка БД -> %s", exc)
- 
+
         return item
     
-    def close_spider(self):
+    def close_spider(self, spider):
         if self.conn:
             self.conn.close()
             logger.info("SQLitePipeline: connection closed")
